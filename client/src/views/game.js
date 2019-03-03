@@ -630,7 +630,7 @@ class GameView extends Component {
         } else
         notification.error({
             message: 'Wrong ships placements',
-            description: 'Try Again!',
+            description: 'Try Again!!!',
         })
     }
 

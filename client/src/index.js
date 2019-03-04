@@ -11,7 +11,15 @@ import { HashRouter } from "react-router-dom"
 import store from "./store"  // Add this line
 
 // let drizzle know what contracts we want
-const options = { contracts: [Battleships] };
+const options = { contracts: [Battleships],
+	web3: {
+    fallback: {
+      type: "ws",
+      url: "ws://192.168.2.104:8545",
+    },
+  },
+
+ };
 
 // setup the drizzle store and drizzle
 const drizzleStore = generateStore(options);

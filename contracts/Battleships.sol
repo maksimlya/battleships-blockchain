@@ -8,6 +8,7 @@ contract Battleships {
 
     event GameCreated(uint32 indexed gameIdx);
     event GameAccepted(uint32 indexed gameIdx, address indexed opponent);
+    event GameConfirmed(uint32 indexed gameIdx, address indexed opponent);
     event GameStarted(uint32 indexed gameIdx, address indexed opponent);
     event PositionMarked(uint32 indexed gameIdx, address indexed opponent);
     event GameEnded(uint32 indexed gameIdx, address indexed opponent);
@@ -105,6 +106,8 @@ contract Battleships {
         revert();
     }
 
+    
+
     struct Game{
         uint32 openListIndex;
         uint8[] cells;
@@ -113,12 +116,14 @@ contract Battleships {
         uint32 gameIndex;
 
         address[2] players;
+        bytes32[2] merkleRoots;
         uint startingPlayer;
         string[2] nicks;
         uint lastTransaction;
         bool[2] withdrawn;
         bytes32 creatorHash;
         uint8 guestRandomNumber;
+        uint8 creatorRandomNumber;
     }
 
     uint32[] openGames;
@@ -152,6 +157,47 @@ contract Battleships {
         return computedHash == root;
     }
 
+    function submitMerkleRoot(uint32 gameIdx, bytes32 root) public returns(bytes32){
+        require(msg.sender == gamesData[gameIdx].players[0] || msg.sender == gamesData[gameIdx].players[1]);
+        require(gamesData[gameIdx].status == 5);
+
+        bytes32 root1 = root;
+        
+        
+        if(msg.sender == gamesData[gameIdx].players[0])
+            gamesData[gameIdx].merkleRoots[0] = root;
+            else
+            gamesData[gameIdx].merkleRoots[1] = root;
+
+        if(gamesData[gameIdx].merkleRoots[0] != 0x0 && gamesData[gameIdx].merkleRoots[1] != 0x0){
+             //Define the starting player
+            if((gamesData[gameIdx].creatorRandomNumber ^ gamesData[gameIdx].guestRandomNumber) & 0x01 == 0){
+                gamesData[gameIdx].status = 1;
+                gamesData[gameIdx].startingPlayer = 1;
+                emit GameStarted(gameIdx, gamesData[gameIdx].players[1]);
+        } 
+        else {
+                gamesData[gameIdx].status = 2;
+                gamesData[gameIdx].startingPlayer = 2;
+                emit GameStarted(gameIdx, gamesData[gameIdx].players[1]);
+        }
+        }
+        return root1;
+    }
+
+    function getTestGameInfo(uint32 gameIdx) public view returns (uint32 gameIndex,uint8[] memory cells,bytes32[2] memory merkleRoots, uint8 status, uint amount, address[2] memory players) {
+        return (
+        	gamesData[gameIdx].gameIndex,
+            gamesData[gameIdx].cells,
+            gamesData[gameIdx].merkleRoots,
+            gamesData[gameIdx].status,
+            gamesData[gameIdx].amount,
+            gamesData[gameIdx].players
+           
+            
+        );
+    }
+
 
 
     function confirmGame(uint32 gameIdx, uint8 revealedRandomNumber, string memory revealedSalt) public {
@@ -171,16 +217,12 @@ contract Battleships {
         gamesData[gameIdx].lastTransaction = now;
 
         gamesData[gameIdx].status = 5;
-        //Define the starting player
-        if((revealedRandomNumber ^ gamesData[gameIdx].guestRandomNumber) & 0x01 == 0){
-            gamesData[gameIdx].startingPlayer = 1;
-            emit GameStarted(gameIdx, gamesData[gameIdx].players[1]);
-        } 
-        else {
-            gamesData[gameIdx].startingPlayer = 2;
-            emit GameStarted(gameIdx, gamesData[gameIdx].players[1]);
-        }
-        
+
+
+        gamesData[gameIdx].creatorRandomNumber = revealedRandomNumber;
+       
+        emit GameConfirmed(gameIdx, gamesData[gameIdx].players[1]);
+       
     }
 
     function validateDesk(uint8[] memory rows, uint8[] memory cols) public returns(bool){

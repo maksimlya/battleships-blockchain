@@ -5,6 +5,7 @@ import { Row, Col, Divider, Button, Spin, Icon, message, notification } from "an
 import MerkleTree from '../MerkleTree'
 import 'antd/dist/antd.css';
 import Web3 from 'web3';
+import GameOnView from './gameOn';
 
 
 
@@ -33,9 +34,6 @@ class Cell extends React.Component {
       );
     }
   }
-
- 
-
   
 class GameView extends Component {
     constructor(props) {
@@ -49,6 +47,10 @@ class GameView extends Component {
             gameStarted: false,
             game: null,
             cells: [],
+            merkleTree: [],
+        
+
+            myTurn: true,
 
             pendingGame: false,
             gameIdx: 0
@@ -56,9 +58,9 @@ class GameView extends Component {
         this.rows = HEIGHT / CELL_SIZE;
         this.cols = WIDTH / CELL_SIZE;
         this.board = this.makeEmptyBoard();
-    }
+       }
 
-    
+   
 
     makeEmptyBoard() {
         let board = [];
@@ -84,6 +86,8 @@ class GameView extends Component {
         }
         return cells;
       }
+      
+
       getElementOffset() {
         const rect = this.boardRef.getBoundingClientRect();
         const doc = document.documentElement;
@@ -146,27 +150,8 @@ class GameView extends Component {
         }
         this.setState({ cells: this.makeCells() });
       }
-  
 
-    //   fetchAcceptedGame = () => {
-    //     if(this.state.pendingGame){
-    //         console.log('trying to fetch accepted game n ' + this.state.gameIdx);
-    //         const { drizzle, drizzleState } = this.props;
-    //         const battleships = drizzle.contracts.Battleships;
-    //         let game = this.state.game;
     
-    //         battleships.methods.getGameInfo(this.state.gameIdx).call({from: drizzleState.accounts[0]}).then(result => {
-    //             if(result.nick2 !== game.nick2){
-    //                 game.nick2 = result.nick2;
-    //                 game.player2 = result.
-    //                 console.log(this);
-    //                 console.log('successfully fetched game n ' + this.state.gameIdx);
-    //                 console.log(game);
-    //                 }
-                
-    //         })
-    //     }
-    // }
     
 
     componentDidMount() {
@@ -180,24 +165,9 @@ class GameView extends Component {
 
         this.fetchGameStatus().then(game => {
             this.setState({ game, loadingGameInfo: false })
-
-            // Check if we need to confirm the game
-   //         return this.checkConfirmGame(game)
         })
-        // .then(() => {
-        //     return this.checkLastPositionLeft(this.state.game)
-        // }).catch(err => {
-        //     this.setState({ loadingGameInfo: false })
-        // })
-       
-        
-
-        
+ 
         const web3Drizzle = drizzle.web3;
-
-        //console.log(web3);
-        //console.log(web3Drizzle);
-
 
         const battleships = drizzle.contracts.Battleships;
         const battleshipsWeb3 = new web3.eth.Contract(battleships.abi, battleships.address);
@@ -280,6 +250,7 @@ class GameView extends Component {
         this.setState({gameStarted: true});
         console.log('Game Started!!!!');
         
+        
       
             notification.success({
                 message: 'Game Started',
@@ -305,14 +276,6 @@ class GameView extends Component {
         }
 
         this.setState({ confirmLoading: true })
-
-
-        
-        //console.log(await contract.methods.getGameInfo(this.props.match.params.id).call());
-         
-      
-
-
 
         return contract.methods.confirmGame(this.props.match.params.id, data.number, data.salt)
             .send({ from: this.props.accounts[0] })
@@ -620,15 +583,8 @@ class GameView extends Component {
         }
         return cells;
     }
-     sleep(time, callback) {
-        var stop = new Date().getTime();
-        while(new Date().getTime() < stop + time) {
-            ;
-        }
-        callback();
-    }
+  
     validateShipsPlacement(cells) {
-        
         const ships = [true,true,true,true,true];   // To remember placed ships
         let tempCells = this.state.cells;
         while (tempCells.length > 0){
@@ -680,9 +636,7 @@ class GameView extends Component {
     }
 
     onReadyClick = (event) => {
-        this.test();
         this.fetchGameStatus();
-        console.log(this.state.game);
         const { drizzle, drizzleState } = this.props;
         const contract = drizzle.contracts.Battleships;
         let cells = []
@@ -694,14 +648,10 @@ class GameView extends Component {
                     cells[i][j] = 1;
                 else
                     cells[i][j] = 0;
-       // this.setState({cells: this.makeCells()});
         let arePlacementsValid = this.validateShipsPlacement(cells);
 
         if(arePlacementsValid){
             
-             
-            
-             
             // const proof = merkleTree.getHexProof(elements[0]);
             // const leaf = bufferToHex(keccak256(elements[0]));
             // (async() => {
@@ -737,27 +687,24 @@ class GameView extends Component {
         
     }
 
-    test() {
-        console.log(this.props);
-        (async() => {
-        const { drizzle, drizzleState } = this.props;
-        let contract = drizzle.contracts.Battleships;
-
-        let res = await contract.methods.getTestGameInfo(this.state.game.index).call({from: drizzleState.accounts[0]});
-            console.log(res);
-       
-    })();
-    }
+   
 
 
      renderDesktop() {
         const { drizzle, drizzleState } = this.props;
         let web3 = drizzle.web3;
         const { cells } = this.state;
+      
+       
 
-        if(this.state.gameStarted)
-            return <div>Game going on</div>
-
+        if(this.state.game.status === "1" || this.state.game.status === "2") {                        // Change here
+                let myTurn = false;
+                if(this.state.game.status === "1" && drizzleState.accounts[0] === this.state.game.player1)
+                    myTurn = true;
+                if(this.state.game.status === "2" && drizzleState.accounts[0] === this.state.game.player2)
+                    myTurn = true;
+               return<GameOnView game = {this.state.game} merkleTree = {this.state.merkleTree} drizzle = {drizzle} drizzleState = {drizzleState} myBoard = {this.board} myTurn = {myTurn}></GameOnView>
+        }
         else
         return <Row gutter={48}>
             <Col md={12}>
@@ -778,7 +725,11 @@ class GameView extends Component {
                 </div>
                 <Button type="primary" size = "large" onClick = { this.onReadyClick }>Ready</Button>
             </div>
-            
+            </div>
+                
+                </Col>
+               
+            </Row>
                     {/* <Divider />
 
                     <table id="board">
@@ -844,11 +795,7 @@ class GameView extends Component {
                             </div>
                     } */}
 
-                </div>
-                
-            </Col>
-            
-        </Row>
+          
         
     }
 

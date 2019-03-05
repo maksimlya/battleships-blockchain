@@ -12,3 +12,12 @@
     position: absolute;
   }
   
+  .HitCell {
+    background: #a00;
+    position: absolute;
+  }
+  .MissedCell {
+    background: #00c;
+    position: absolute;
+  }
+  

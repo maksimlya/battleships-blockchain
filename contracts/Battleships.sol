@@ -10,8 +10,9 @@ contract Battleships {
     event GameAccepted(uint32 gameIdx, address indexed opponent);
     event GameConfirmed(uint32 indexed gameIdx, address indexed opponent);
     event GameStarted(uint32 indexed gameIdx, address indexed opponent);
-    event PositionMarked(uint32 indexed gameIdx, address indexed opponent);
+    event PlayerAttacked(uint32 indexed gameIdx, address indexed opponent, uint32 indexed target, uint32 prevTarget, bool isHit);
     event GameEnded(uint32 indexed gameIdx, address indexed opponent);
+    
 
 
    
@@ -22,10 +23,9 @@ contract Battleships {
         return openGames;
     }
 
-    function getGameInfo(uint32 gameIdx) public view returns (uint32 gameIndex,uint8[] memory cells, uint8 status, uint amount, string memory nick1, string memory nick2) {
+    function getGameInfo(uint32 gameIdx) public view returns (uint32 gameIndex, uint8 status, uint amount, string memory nick1, string memory nick2) {
         return (
         	gamesData[gameIdx].gameIndex,
-            gamesData[gameIdx].cells,
             gamesData[gameIdx].status,
             gamesData[gameIdx].amount,
             gamesData[gameIdx].nicks[0],
@@ -60,6 +60,58 @@ contract Battleships {
         gameIdx = nextGameIdx;
         emit GameCreated(nextGameIdx);
         nextGameIdx++;
+    }
+
+    function initialAttack(uint32 gameIdx, uint32 target) public{
+        require(gameIdx < nextGameIdx);
+        require(gamesData[gameIdx].players[0] != address(0x0));
+        require(gamesData[gameIdx].players[1] != address(0x0));
+
+        address opponent;
+        if(gamesData[gameIdx].players[0] == msg.sender)
+            opponent = gamesData[gameIdx].players[1];
+        else opponent = gamesData[gameIdx].players[0];
+
+        gamesData[gameIdx].lastTarget = target;
+        emit PlayerAttacked(gameIdx, opponent, target,64,false);
+
+        
+    }
+
+    function attack(uint32 gameIdx, uint32 attackTarget, bytes32[] memory proof, bytes32 leaf, string memory lastTargetProof, bool isHit) public{
+        require(gameIdx < nextGameIdx);
+        require(gamesData[gameIdx].players[0] != address(0x0));
+        require(gamesData[gameIdx].players[1] != address(0x0));
+
+        address opponent;
+        if(gamesData[gameIdx].players[0] == msg.sender)
+            opponent = gamesData[gameIdx].players[1];
+        else opponent = gamesData[gameIdx].players[0];
+
+
+        bool isProofValid;
+
+        if(msg.sender == gamesData[gameIdx].players[0]){
+            gamesData[gameIdx].player1Cells[gamesData[gameIdx].lastTarget]  = lastTargetProof;
+            isProofValid = checkProof(proof, gamesData[gameIdx].merkleRoots[0], leaf);
+        }
+        else{
+            gamesData[gameIdx].player2Cells[gamesData[gameIdx].lastTarget]  = lastTargetProof;
+            isProofValid = checkProof(proof, gamesData[gameIdx].merkleRoots[1], leaf);
+        }
+
+        if(!isProofValid){
+            if(msg.sender == gamesData[gameIdx].players[0])
+                gamesData[gameIdx].status = 12;
+            else if(msg.sender == gamesData[gameIdx].players[1])
+                gamesData[gameIdx].status = 11;
+        }
+        else
+        
+
+        emit PlayerAttacked(gameIdx, opponent, attackTarget,gamesData[gameIdx].lastTarget, isHit);
+
+        gamesData[gameIdx].lastTarget = attackTarget;
     }
 
     
@@ -113,11 +165,13 @@ contract Battleships {
 
     struct Game{
         uint32 openListIndex;
-        uint8[] cells;
+        string[64] player1Cells;
+        string[64] player2Cells;
         uint8 status;
         uint amount;
         uint32 gameIndex;
 
+        uint32 lastTarget;
         address[2] players;
         bytes32[2] merkleRoots;
         uint startingPlayer;
@@ -140,7 +194,7 @@ contract Battleships {
         myString = x;
     }
 
-    // Check Merkle Tree proof
+    // Check Merkle Tree proof ( merkle proof = merkle path)
     function checkProof(bytes32[] memory proof, bytes32 root, bytes32 leaf) pure public returns (bool) {
         bytes32 computedHash = leaf;
 
@@ -188,10 +242,9 @@ contract Battleships {
         return root1;
     }
 
-    function getTestGameInfo(uint32 gameIdx) public view returns (uint32 gameIndex,uint8[] memory cells,bytes32[2] memory merkleRoots, uint8 status, uint amount, address[2] memory players) {
+    function getTestGameInfo(uint32 gameIdx) public view returns (uint32 gameIndex,bytes32[2] memory merkleRoots, uint8 status, uint amount, address[2] memory players) {
         return (
         	gamesData[gameIdx].gameIndex,
-            gamesData[gameIdx].cells,
             gamesData[gameIdx].merkleRoots,
             gamesData[gameIdx].status,
             gamesData[gameIdx].amount,

@@ -7,11 +7,12 @@ contract Battleships {
 	// Events
 
     event GameCreated(uint32 indexed gameIdx);
-    event GameAccepted(uint32 indexed gameIdx, address indexed opponent);
+    event GameAccepted(uint32 indexed gameIdx, address indexed opponent, address player2, string nick2);
     event GameConfirmed(uint32 indexed gameIdx, address indexed opponent);
     event GameStarted(uint32 indexed gameIdx, address indexed opponent);
     event PositionMarked(uint32 indexed gameIdx, address indexed opponent);
     event GameEnded(uint32 indexed gameIdx, address indexed opponent);
+
 
    
     
@@ -74,13 +75,15 @@ contract Battleships {
         gamesData[gameIdx].players[1] = msg.sender;
         gamesData[gameIdx].lastTransaction = now;
 
-        emit GameAccepted(gameIdx, gamesData[gameIdx].players[0]);
+        
 
         // Remove from the available list (unordered)
         uint32 idxToDelete = uint32(gamesData[gameIdx].openListIndex);
         openGames[idxToDelete] = openGames[openGames.length - 1];
         gamesData[gameIdx].openListIndex = idxToDelete;
         openGames.length--;
+
+        emit GameAccepted(gameIdx, gamesData[gameIdx].players[0],gamesData[gameIdx].players[1],gamesData[gameIdx].nicks[1]);
     }
 
    

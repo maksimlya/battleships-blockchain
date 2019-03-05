@@ -6,6 +6,7 @@ import Media from "react-media"
 import { Row, Col, Divider, Button, Input, InputNumber, Spin, Icon, message, notification } from "antd"
 import ConfirmAcceptModal from "../widgets/confirm-accept-modal"
 import 'antd/dist/antd.css';
+import Web3 from 'web3';
 
 
 
@@ -21,7 +22,11 @@ class MainView extends Component {
             showAcceptModal: false,
             gameIdxToAccept: -1,
             stackId: null,
-            openGames: null
+            openGames: [],
+
+
+            approvedGameIdx: 0,
+            pendingGameIdx: 0
         }
     }
 
@@ -32,22 +37,87 @@ class MainView extends Component {
     }
 
     componentDidMount(){
-       this.fetchOpenGames();
+
+        this.fetchOpenGames();
+
+        const web3 = new Web3('ws://milky.ddns.net:8545');
+        const { drizzle, drizzleState } = this.props;
+        const battleships = drizzle.contracts.Battleships;
+
+        const battleshipsWeb3 = new web3.eth.Contract(battleships.abi, battleships.address);
+       
+
+        this.worker = setInterval(this.fetchNewGame, 1500);
+    
+
+         this.createdGameEvent = battleshipsWeb3.events.GameCreated().on('data', event =>{
+             this.setState({pendingGameIdx: event.returnValues.gameIdx});
+     });
+   
     }
 
+    componentWillUnmount() {
+      
+      
+        clearInterval(this.worker);
+     
+     
+    }
+ 
 
-    fetchOpenGames(){
+     fetchNewGame = () => {
+        if(this.state.pendingGameIdx > this.state.approvedGameIdx){
+            console.log('trying to fetch game n ' + this.state.pendingGameIdx +', current approved game n ' + this.state.approvedGameIdx);
+            const { drizzle, drizzleState } = this.props;
+            const battleships = drizzle.contracts.Battleships;
+            let games = this.state.openGames;
+    
+            battleships.methods.getGameInfo(this.state.pendingGameIdx).call({from: drizzleState.accounts[0]}).then(result => {
+                if(result.nick1.length > 1){
+                    games.push(result);
+                    this.setState({approvedGameIdx: result.gameIndex});
+                    console.log('successfully fetched game n ' + this.state.approvedGameIdx);
+                    }
+                
+            })
+        }
+       
+        
+        //const battleshipsWeb3 = new web3.eth.Contract(battleships.abi, battleships.address);
+
+            
+            // let newGame  = await battleshipsWeb3.methods.getGameInfo(id).call({from: drizzleState.accounts[0]});
+          //  setTimeout(this.myFunc, 2500, id);
+            //console.log(newGame);
+           
+
+            }
+
+        
+           
+           
+              
+              
+             
+            
+    
+
+
+     fetchOpenGames = async() => {
         const { drizzle, drizzleState } = this.props;
         const contract = drizzle.contracts.Battleships;
-        let openGames = [];
-        (async() => {
+        let openGames = []
+        let tmpIdx = 0;
+        
             let openGamesIdx = await contract.methods.getOpenGames().call();
             if(openGamesIdx)
             for(let i of openGamesIdx){
+                tmpIdx=i;
                 openGames.push(await contract.methods.getGameInfo(i).call());
             }
-        this.setState({openGames});        
-        })();
+                           this.setState({openGames,
+                                    approvedGameIdx: tmpIdx
+                        });        
     }
 
     showAcceptGameModal(idx) {
@@ -64,7 +134,7 @@ class MainView extends Component {
         this.acceptForm = ref
     }
 
-    createGame()  {
+    async createGame()  {
 
         const { drizzle, drizzleState } = this.props;
         const contract = drizzle.contracts.Battleships;
@@ -74,7 +144,7 @@ class MainView extends Component {
         else if (typeof this.state.number == "undefined") return message.error("Please, choose a random number")
         else if (!this.state.salt) return message.error("Please, type a random string")
         else{
-        (async() => {
+        
             let number = this.state.number % 256
             let saltedHash =  await contract.methods.saltedHash(number,this.state.salt).call();
             
@@ -88,6 +158,10 @@ class MainView extends Component {
                     this.setState({ creationLoading: true });
                     
                     let tx = await contract.methods.createGame(saltedHash,this.state.nick).send({value,from: drizzleState.accounts[0]})
+
+                    let test = await contract.methods.getGameInfo(tx.events.GameCreated.returnValues.gameIdx).call();
+
+                    console.log(test);
                   
                      this.setState({ creationLoading: false })
                         if (!tx.events.GameCreated || !tx.events.GameCreated.returnValues) {
@@ -108,7 +182,7 @@ class MainView extends Component {
                             description: 'Your game has been created. Waiting for another user to accept it.',
                         })
                    
-        })();
+       
     }
       
         
@@ -129,12 +203,13 @@ class MainView extends Component {
        
     }
 
-    acceptGame() {
+    async acceptGame() {
         const { drizzle, drizzleState } = this.props;
         const game = this.state.openGames[this.state.gameIdxToAccept]
    
 
-         this.acceptForm.validateFields((err, values) => {
+         await this.acceptForm.validateFields((err, values) => {
+             (async() => {
              if (err) return
 
              if (!values.nick) return message.error("Please, choose a nick")
@@ -149,9 +224,8 @@ class MainView extends Component {
 
             // TRANSACTION
             
-             contract.methods.acceptGame(game.gameIndex, values.number, values.nick)
-                .send({ value: game.amount || 0, from: drizzleState.accounts[0] })
-                .then(tx => {
+             let tx = await contract.methods.acceptGame(game.gameIndex, values.number, values.nick).send({ value: game.amount || 0, from: drizzleState.accounts[0] })
+                
                     this.setState({ acceptLoading: false })
                     console.log(tx);
                     if (!tx.events.GameAccepted || !tx.events.GameAccepted.returnValues) {
@@ -163,19 +237,13 @@ class MainView extends Component {
                         message: 'Game accepted',
                         description: 'You have accepted the game. Waiting for creator to confirm.',
                     })
-                })
-                .catch(err => {
-                    this.setState({ acceptLoading: false })
+               
 
-                    let msg = err.message.replace(/\.$/, "").replace(/Returned error: Error: MetaMask Tx Signature: /, "")
-                    notification.error({
-                        message: 'Failed to accept the game',
-                        description: msg
-                    })
-                })
-
-         })
+         })();
+        });
     }
+
+    
 
 
     renderNewGame() {

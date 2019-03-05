@@ -6,7 +6,7 @@ module.exports = {
   contracts_build_directory: path.join(__dirname, "client/src/contracts"),
   networks: {
     development: {
-      host: "192.168.2.104",
+      host: "milky.ddns.net",
       port: 8545,
       network_id: "*", // Match any network id
       websockets: true

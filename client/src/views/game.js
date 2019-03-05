@@ -149,13 +149,14 @@ class GameView extends Component {
 
     componentDidMount() {
         //const web3 = new Web3(window.web3.currentProvider);
-        const web3 = new Web3('ws://192.168.2.104:8545');
+        const web3 = new Web3('ws://milky.ddns.net:8545');
         const { drizzle, drizzleState } = this.props;
+        const contract = drizzle.contracts.Battleships;
         this.setState({ loadingGameInfo: true })
 
         
-       
         this.fetchGameStatus().then(game => {
+            //console.log(game);
             this.setState({ game, loadingGameInfo: false })
 
             // Check if we need to confirm the game
@@ -167,80 +168,41 @@ class GameView extends Component {
         //     this.setState({ loadingGameInfo: false })
         // })
        
-        const contract = drizzle.contracts.Battleships;
+        
 
         
         const web3Drizzle = drizzle.web3;
 
-        console.log(web3);
-        console.log(web3Drizzle);
+        //console.log(web3);
+        //console.log(web3Drizzle);
 
 
         const battleships = drizzle.contracts.Battleships;
         const battleshipsWeb3 = new web3.eth.Contract(battleships.abi, battleships.address);
-
-        // const pastEvents = battleshipsWeb3.getPastEvents(
-        //     'GameAccepted',
-        //     {
-        //        fromBlock: 0,
-        //        toBlock: 'latest'
-        //     }
-        //   ).then(event => {
-        //     console.log(event);
-        //   })
-
-        this.createdEvent = battleshipsWeb3.events.GameCreated().on('data', event => {
-            console.log(event);
-        })
-        this.acceptedEvent = battleshipsWeb3.events.GameAccepted().on('data', event2 => {
-            console.log("Game Created!!!!");
-        })
-
-          
-
-
+       
 
        
-//         this.acceptedEvent = contract.events.GameAccepted( {filter: { opponent: this.props.accounts && this.props.accounts[0],
-//             gameIdx: this.props.match.params.id && this.props.match.params.id
-//   },
-//   fromBlock: "latest", toBlock: "pending"
-// }).on('data', event => {
-//     console.log(event);
-// });
+        this.acceptedEvent = battleshipsWeb3.events.GameAccepted( {filter: { opponent: this.props.accounts && this.props.accounts[0],
+            gameIdx: this.props.match.params.id && this.props.match.params.id
+  },
+  fromBlock: this.props.status.startingBlock || 0
+},(err,event) => {this.onGameAccepted(event);});
 
-//         this.confirmedGame = contract.events.GameConfirmed( {filter: { opponent: this.props.accounts && this.props.accounts[0],
-//             gameIdx: this.props.match.params.id && this.props.match.params.id
-//   },
-//   fromBlock: "latest", toBlock: "pending"
-// },
-//             (idx,address) => {
-           
-//                 console.log('aaa');
+            this.confirmedEvent = battleshipsWeb3.events.GameConfirmed( {filter: { opponent: this.props.accounts && this.props.accounts[0],
+                gameIdx: this.props.match.params.id && this.props.match.params.id
+    },
+    fromBlock: this.props.status.startingBlock || 0
+    }).on('data', event => {
+        this.onGameConfirmed(event);
+    });
             
-//         });
-
-
-//             this.confirmedEvent = contract.events.GameConfirmed({
-//             filter: { opponent: this.props.accounts && this.props.accounts[0],
-//                 gameIdx: this.props.match.params.id && this.props.match.params.id
-//             },
-//             fromBlock: this.props.status.startingBlock || 0
-//         })
-//             .on('data', event => this.onGameConfirmed(event))
-//             .on('changed', (event) => {
-//                 // remove event from local database
-//             })
-            
-        // this.createdEvent = contract.events.GameCreated();
-        // this.startedEvent = contract.events.GameStarted({
-        //     filter: { opponent: this.props.accounts && this.props.accounts[0],
-        //         gameIdx: this.props.match.params.id && this.props.match.params.id
-        //     },
-        //     fromBlock: this.props.status.startingBlock || 0
-        // })
-        //     .on('data', event => this.onGameStarted(event));
-            //.on('error', err => message.error(err && err.message || err))
+        this.startedEvent = battleshipsWeb3.events.GameStarted({
+            filter: { 
+                gameIdx: this.props.match.params.id && this.props.match.params.id
+            },
+            fromBlock: this.props.status.startingBlock || 0
+        })
+            .on('data', event => {this.onGameStarted()});
 
         // this.positionMarkedEvent = contract.events.PositionMarked({
         //     filter: { opponent: this.props.accounts && this.props.accounts[0] },
@@ -257,29 +219,46 @@ class GameView extends Component {
             //.on('error', err => message.error(err && err.message || err))
      }
      componentWillUnmount() {
-       // this.acceptedEvent.unsubscribe()
-        //this.startedEvent.unsubscribe()
-        //this.confirmedEvent.unsubscribe()
+      
+        this.unsubscribe();
+          
+        this.acceptedEvent.unsubscribe()
+        this.startedEvent.unsubscribe()
+        this.confirmedEvent.unsubscribe()
         //this.endedEvent.unsubscribe()
     }
 
      onGameAccepted(event) {
-         console.log('Game Accepted');
-               return this.fetchGameStatus().then(game => {
-            this.setState({ game, loadingGameInfo: false })
+         console.log(event);
+        //let tmpGame = this.state.game;
+       // const { drizzle, drizzleState } = this.props;
+       // const contract = drizzle.contracts.Battleships;
+        
+       // tmpGame.nick2 = event.returnValues.nick2;
+       // tmpGame.player2 = event.returnValues.player2;
 
-            notification.success({
-                message: 'Game accepted',
-                description: `${game.nick2} has accepted the game!`
-            })
-     //      return this.checkConfirmGame(game)
-        })
+        // this.setState({game: tmpGame});
+       
     }
+    
+        
+    //        console.log(event);
+    //         this.fetchGameStatus().then(game => {
+    //    //            console.log(game);
+    //         this.setState({ game, loadingGameInfo: false })
+
+    //         notification.success({
+    //             message: 'Game accepted',
+    //             description: `${game.nick2} has accepted the game!`
+    //         })
+    //         this.checkConfirmGame(game)                   // TODO - Fix stuff....
+    //     })
+    
 
     onGameConfirmed(event) {
+   //     console.log("Game Confirmed!!");
         return this.fetchGameStatus().then(game => {
-            this.setState({ game, loadingGameInfo: false })
-            console.log(this.state.game);
+            this.setState({ game, confirmLoading: false })
             notification.success({
                 message: 'Game confirmed',
                 description: `${game.nick1} has confirmed the game! Choose Ships Placements and check when ready!!!`
@@ -299,53 +278,65 @@ class GameView extends Component {
         //     })
         // })
     }
-    // checkConfirmGame(game) {
-    //     if (this.state.confirmLoading || game.status !== "0" || game.player2.match(/^0x0+$/) || game.player1 !== this.props.accounts[0]) {
-    //         return
-    //     }
-    //     const { drizzle, drizzleState } = this.props;
-    //     let contract = drizzle.contracts.Battleships;
+    async checkConfirmGame(game) {
+       // console.log('Game Prio');
+      //  console.log(game.player2);
+        if (this.state.confirmLoading || game.status !== "0" || game.player1 !== this.props.accounts[0]) {
+            return
+        }
 
-    //     let data = this.props.status.createdGames[this.props.match.params.id]
-    //     if (!data) {
-    //         return notification.error({
-    //             message: 'Failed to confirm the game',
-    //             description: 'The random number and the salt can\'t be found'
-    //         })
-    //     }
+      //  console.log('Game Accepted');
+        const { drizzle, drizzleState } = this.props;
+        let contract = drizzle.contracts.Battleships;
 
-    //     this.setState({ confirmLoading: true })
+        let data = this.props.status.createdGames[this.props.match.params.id]
+        if (!data) {
+            return notification.error({
+                message: 'Failed to confirm the game',
+                description: 'The random number and the salt can\'t be found'
+            })
+        }
 
-    //     return contract.methods.confirmGame(this.props.match.params.id, data.number, data.salt)
-    //         .send({ from: this.props.accounts[0] })
-    //         .then(tx => {
+        this.setState({ confirmLoading: true })
+
+
+        
+        //console.log(await contract.methods.getGameInfo(this.props.match.params.id).call());
+         
+      
+
+
+
+        return contract.methods.confirmGame(this.props.match.params.id, data.number, data.salt)
+            .send({ from: this.props.accounts[0] })
+            .then(tx => {
                 
-    //             this.setState({ confirmLoading: false })
-    //             console.log(tx);
-    //             if (!tx.events.GameConfirmed || !tx.events.GameConfirmed.returnValues) {
-    //                 throw new Error("The transaction failed")
-    //             }
+                this.setState({ confirmLoading: false })
+               // console.log(tx);
+                if (!tx.events.GameConfirmed || !tx.events.GameConfirmed.returnValues) {
+                    throw new Error("The transaction failed")
+                }
 
-    //             notification.success({
-    //                 message: 'Game confirmed',
-    //                 description: 'The game is on. Good luck!',
-    //             })
-    //             this.props.dispatch({ type: "REMOVE_CREATED_GAME", id: game.id })
+                notification.success({
+                    message: 'Game confirmed',
+                    description: 'The game is on. Good luck!',
+                })
+                this.props.dispatch({ type: "REMOVE_CREATED_GAME", id: game.id })
 
-    //             return this.fetchGameStatus().then(game => {
-    //                 this.setState({ game })
-    //             })
-    //         })
-    //         .catch(err => {
-    //             this.setState({ confirmLoading: false })
+                return this.fetchGameStatus().then(game => {
+                    this.setState({ game })
+                })
+            })
+            .catch(err => {
+                this.setState({ confirmLoading: false })
 
-    //             let msg = err.message.replace(/\.$/, "").replace(/Returned error: Error: MetaMask Tx Signature: /, "")
-    //             notification.error({
-    //                 message: 'Unable to confirm the game',
-    //                 description: msg
-    //             })
-    //         })
-    // }
+                let msg = err.message.replace(/\.$/, "").replace(/Returned error: Error: MetaMask Tx Signature: /, "")
+                notification.error({
+                    message: 'Unable to confirm the game',
+                    description: msg
+                })
+            })
+    }
 
     onGameEnded() {
         // return this.fetchGameStatus().then(game => {
@@ -417,6 +408,7 @@ class GameView extends Component {
         const result = {}
 
         return contract.methods.getGameInfo(this.props.match.params.id).call().then(gameInfo => {
+           // console.log(gameInfo);
             result.index = gameInfo.gameIndex
             result.amount = gameInfo.amount
             result.cells = gameInfo.cells
@@ -619,7 +611,13 @@ class GameView extends Component {
         }
         return cells;
     }
-
+     sleep(time, callback) {
+        var stop = new Date().getTime();
+        while(new Date().getTime() < stop + time) {
+            ;
+        }
+        callback();
+    }
     validateShipsPlacement(cells) {
         
         const ships = [true,true,true,true,true];   // To remember placed ships
@@ -713,18 +711,19 @@ class GameView extends Component {
             const merkleTree = new MerkleTree(randomizedValues)
             const root = merkleTree.getHexRoot();
 
-            console.log(root);
+            //console.log(root);
             notification.success({
                 message: 'Ships placements are valid',
                 description: 'Awaiting Opponent!',
             })
-            console.log(this.state.game.index);
+           // console.log(this.state.game.index);
             contract.methods.submitMerkleRoot(this.state.game.index,root).send({from: drizzleState.accounts[0]});
         } else
         notification.error({
             message: 'Wrong ships placements',
             description: 'Try Again!!!',
         })
+
 
         
     }
@@ -841,6 +840,7 @@ class GameView extends Component {
     }
 
 render() {
+    if (this.state.loading) return "Loading Drizzle...";
     if (this.state.loadingGameInfo) {
         return <LoadingView />
     }

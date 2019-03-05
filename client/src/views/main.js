@@ -58,7 +58,7 @@ class MainView extends Component {
 
     componentWillUnmount() {
       
-      
+        this.createdGameEvent.unsubscribe();
         clearInterval(this.worker);
      
      
@@ -81,17 +81,7 @@ class MainView extends Component {
                 
             })
         }
-       
-        
-        //const battleshipsWeb3 = new web3.eth.Contract(battleships.abi, battleships.address);
-
-            
-            // let newGame  = await battleshipsWeb3.methods.getGameInfo(id).call({from: drizzleState.accounts[0]});
-          //  setTimeout(this.myFunc, 2500, id);
-            //console.log(newGame);
-           
-
-            }
+    }
 
         
            

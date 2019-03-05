@@ -46,8 +46,12 @@ class GameView extends Component {
             waitingAccept: false,
             confirmLoading: false,
             markLoading: false,
+            gameStarted: false,
             game: null,
             cells: [],
+
+            pendingGame: false,
+            gameIdx: 0
         }
         this.rows = HEIGHT / CELL_SIZE;
         this.cols = WIDTH / CELL_SIZE;
@@ -144,7 +148,25 @@ class GameView extends Component {
       }
   
 
+    //   fetchAcceptedGame = () => {
+    //     if(this.state.pendingGame){
+    //         console.log('trying to fetch accepted game n ' + this.state.gameIdx);
+    //         const { drizzle, drizzleState } = this.props;
+    //         const battleships = drizzle.contracts.Battleships;
+    //         let game = this.state.game;
     
+    //         battleships.methods.getGameInfo(this.state.gameIdx).call({from: drizzleState.accounts[0]}).then(result => {
+    //             if(result.nick2 !== game.nick2){
+    //                 game.nick2 = result.nick2;
+    //                 game.player2 = result.
+    //                 console.log(this);
+    //                 console.log('successfully fetched game n ' + this.state.gameIdx);
+    //                 console.log(game);
+    //                 }
+                
+    //         })
+    //     }
+    // }
     
 
     componentDidMount() {
@@ -154,9 +176,9 @@ class GameView extends Component {
         const contract = drizzle.contracts.Battleships;
         this.setState({ loadingGameInfo: true })
 
-        
+        this.worker = setInterval(this.fetchGameStatus, 1500);
+
         this.fetchGameStatus().then(game => {
-            //console.log(game);
             this.setState({ game, loadingGameInfo: false })
 
             // Check if we need to confirm the game
@@ -182,27 +204,30 @@ class GameView extends Component {
        
 
        
-        this.acceptedEvent = battleshipsWeb3.events.GameAccepted( {filter: { opponent: this.props.accounts && this.props.accounts[0],
-            gameIdx: this.props.match.params.id && this.props.match.params.id
-  },
-  fromBlock: this.props.status.startingBlock || 0
-},(err,event) => {this.onGameAccepted(event);});
+            this.acceptedEvent = battleshipsWeb3.events.GameAccepted( {filter: { opponent: this.props.accounts && this.props.accounts[0],
+                gameIdx: this.props.match.params && this.props.match.params.id
+                    },
+                    fromBlock: 'latest'
+                    },(err,event) => {
+                        this.onGameAccepted(event);
+                    });
+
 
             this.confirmedEvent = battleshipsWeb3.events.GameConfirmed( {filter: { opponent: this.props.accounts && this.props.accounts[0],
                 gameIdx: this.props.match.params.id && this.props.match.params.id
-    },
-    fromBlock: this.props.status.startingBlock || 0
-    }).on('data', event => {
-        this.onGameConfirmed(event);
-    });
+                    },
+                    fromBlock: this.props.status.startingBlock || 0
+                    }).on('data', event => {
+                        this.onGameConfirmed(event);
+                    });
             
-        this.startedEvent = battleshipsWeb3.events.GameStarted({
-            filter: { 
+            this.startedEvent = battleshipsWeb3.events.GameStarted({
+                    filter: { 
                 gameIdx: this.props.match.params.id && this.props.match.params.id
-            },
-            fromBlock: this.props.status.startingBlock || 0
-        })
-            .on('data', event => {this.onGameStarted()});
+                    },
+                    fromBlock: this.props.status.startingBlock || 0
+                    })
+                    .on('data', event => {this.onGameStarted()});
 
         // this.positionMarkedEvent = contract.events.PositionMarked({
         //     filter: { opponent: this.props.accounts && this.props.accounts[0] },
@@ -220,6 +245,7 @@ class GameView extends Component {
      }
      componentWillUnmount() {
       
+        clearInterval(this.worker);
         this.unsubscribe();
           
         this.acceptedEvent.unsubscribe()
@@ -229,63 +255,44 @@ class GameView extends Component {
     }
 
      onGameAccepted(event) {
-         console.log(event);
-        //let tmpGame = this.state.game;
-       // const { drizzle, drizzleState } = this.props;
-       // const contract = drizzle.contracts.Battleships;
-        
-       // tmpGame.nick2 = event.returnValues.nick2;
-       // tmpGame.player2 = event.returnValues.player2;
-
-        // this.setState({game: tmpGame});
-       
+        this.fetchGameStatus().then(game =>{
+            notification.success({
+                message: 'Game accepted',
+                description: `${game.nick2} has accepted the game!`
+            })
+            this.setState({game, waitingAccept : false})
+            this.checkConfirmGame(game)                   // TODO - Fix stuff....
+        })
+      
     }
     
-        
-    //        console.log(event);
-    //         this.fetchGameStatus().then(game => {
-    //    //            console.log(game);
-    //         this.setState({ game, loadingGameInfo: false })
-
-    //         notification.success({
-    //             message: 'Game accepted',
-    //             description: `${game.nick2} has accepted the game!`
-    //         })
-    //         this.checkConfirmGame(game)                   // TODO - Fix stuff....
-    //     })
-    
-
     onGameConfirmed(event) {
-   //     console.log("Game Confirmed!!");
-        return this.fetchGameStatus().then(game => {
-            this.setState({ game, confirmLoading: false })
-            notification.success({
-                message: 'Game confirmed',
-                description: `${game.nick1} has confirmed the game! Choose Ships Placements and check when ready!!!`
+            this.fetchGameStatus().then(game =>{
+                notification.success({
+                    message: 'Game confirmed',
+                    description: `${game.nick1} has confirmed the game! Choose Ships Placements and check when ready!!!`
+                })
+                this.setState({ confirmLoading: false });
             })
-        })
     }
 
     onGameStarted(event) {
+        this.setState({gameStarted: true});
         console.log('Game Started!!!!');
         
-        // return this.fetchGameStatus().then(game => {
-        //     this.setState({ game, loadingGameInfo: false })
-
-        //     notification.success({
-        //         message: 'Game confirmed',
-        //         description: `${game.nick1} has confirmed the game!`
-        //     })
-        // })
+      
+            notification.success({
+                message: 'Game Started',
+                description: `Play and win!`
+            })
+     
     }
     async checkConfirmGame(game) {
-       // console.log('Game Prio');
-      //  console.log(game.player2);
         if (this.state.confirmLoading || game.status !== "0" || game.player1 !== this.props.accounts[0]) {
             return
         }
 
-      //  console.log('Game Accepted');
+        console.log('Tryying to confirm');
         const { drizzle, drizzleState } = this.props;
         let contract = drizzle.contracts.Battleships;
 
@@ -401,7 +408,7 @@ class GameView extends Component {
     }
 
 
-     fetchGameStatus() {
+     fetchGameStatus = () => {
         const { drizzle, drizzleState } = this.props;
         const contract = drizzle.contracts.Battleships;
 
@@ -430,6 +437,8 @@ class GameView extends Component {
         //     result.withdrawn1 = withdrawals.player1
         //     result.withdrawn2 = withdrawals.player2
             //console.log(result);
+            this.setState({game: result});
+            console.log(result);
             return result
         })
     }
@@ -742,10 +751,14 @@ class GameView extends Component {
 
 
      renderDesktop() {
-        // this.state.gameId
         const { drizzle, drizzleState } = this.props;
         let web3 = drizzle.web3;
         const { cells } = this.state;
+
+        if(this.state.gameStarted)
+            return <div>Game going on</div>
+
+        else
         return <Row gutter={48}>
             <Col md={12}>
                 <div className="card">

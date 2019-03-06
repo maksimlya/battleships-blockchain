@@ -48,6 +48,7 @@ class GameView extends Component {
             game: null,
             cells: [],
             merkleTree: [],
+            boardValues: [],
         
 
             myTurn: true,
@@ -652,7 +653,7 @@ class GameView extends Component {
 
         if(arePlacementsValid){
             
-            // const proof = merkleTree.getHexProof(elements[0]);
+            //const proof = merkleTree.getHexProof(elements[0]);
             // const leaf = bufferToHex(keccak256(elements[0]));
             // (async() => {
                
@@ -660,15 +661,20 @@ class GameView extends Component {
             //   })();
 
             let elements = [].concat(...cells);
-            let randomizedValues = [];
+            let boardValues = [];
             let min = 10000;
             let max = 19999;
             for( let i = 0 ; i < 64 ; i ++){
-                randomizedValues.push(JSON.stringify(elements[i]) + JSON.stringify(Math.floor(Math.random() * (+max - +min)) + +min));
+                boardValues.push(JSON.stringify(elements[i]) + JSON.stringify(Math.floor(Math.random() * (+max - +min)) + +min));
             }
             
-            const merkleTree = new MerkleTree(randomizedValues)
+            
+            
+
+            const merkleTree = new MerkleTree(boardValues)
             const root = merkleTree.getHexRoot();
+
+            this.setState({merkleTree, boardValues});
 
             //console.log(root);
             notification.success({
@@ -703,7 +709,7 @@ class GameView extends Component {
                     myTurn = true;
                 if(this.state.game.status === "2" && drizzleState.accounts[0] === this.state.game.player2)
                     myTurn = true;
-               return<GameOnView game = {this.state.game} merkleTree = {this.state.merkleTree} drizzle = {drizzle} drizzleState = {drizzleState} myBoard = {this.board} myTurn = {myTurn}></GameOnView>
+               return<GameOnView boardValues = {this.state.boardValues} game = {this.state.game} merkleTree = {this.state.merkleTree} drizzle = {drizzle} drizzleState = {drizzleState} myBoard = {this.board} myTurn = {myTurn}></GameOnView>
         }
         else
         return <Row gutter={48}>

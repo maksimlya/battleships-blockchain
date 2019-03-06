@@ -35,7 +35,7 @@ class Cell extends React.Component {
     render() {
       const { x, y } = this.props;
       return (
-        <div className="Cell" style={{
+        <div className="HitCell" style={{
           left: `${CELL_SIZE * x + 1}px`,
           top: `${CELL_SIZE * y + 1}px`,
           width: `${CELL_SIZE - 1}px`,
@@ -48,7 +48,7 @@ class Cell extends React.Component {
     render() {
       const { x, y } = this.props;
       return (
-        <div className="Cell" style={{
+        <div className="MissedCell" style={{
           left: `${CELL_SIZE * x + 1}px`,
           top: `${CELL_SIZE * y + 1}px`,
           width: `${CELL_SIZE - 1}px`,
@@ -74,16 +74,24 @@ class GameOnView extends Component {
             missedCells: [],
             turn: 0,
             myTurn: false,
+            proof: null,
+            leaf: null,
+            isHit: 3,
+            lastHitProof: null,
+            attackingX: null,
+            attackingY: null
         }
         this.rows = HEIGHT / CELL_SIZE;
         this.cols = WIDTH / CELL_SIZE;
         
 
-        this.myBoard = this.makeEmptyEnemyBoard();
+        this.myBoard = this.makeMyBoard();
         this.enemyBoard = this.makeEmptyEnemyBoard();
     }
 
     componentDidMount(){
+
+        
 
         const { drizzle, drizzleState } = this.props;
         const contract = drizzle.contracts.Battleships;
@@ -93,13 +101,74 @@ class GameOnView extends Component {
                 },
                 fromBlock: 'latest'
             }).on('data', event =>{
-            console.log('Attacked!!!!!!!!');
-            console.log(event);
+              
+              this.onAttackedEvent(event);
+
+            
         })
 
+
+
+
+
+       
         this.setState({myTurn: this.props.myTurn});
         this.makeMyCells();
     }
+
+    makeMyBoard(){
+      let myBoard = []
+        for(let i = 0 ; i < 8 ; i ++){
+          myBoard[i] = [];
+        }
+        for(let i = 0 ; i < 8 ; i ++)
+          for(let j = 0 ; j < 8 ; j ++)
+            if(this.props.myBoard[i][j])
+              myBoard[i][j] = 1;
+              else myBoard[i][j] = 0;
+      return myBoard;
+    }
+
+    onAttackedEvent = (event) => {
+      console.log(event);
+
+      let attackedCell = event.returnValues.target;
+
+      const proof = this.props.merkleTree.getHexProof(this.props.boardValues[attackedCell]);
+      const leaf = bufferToHex(keccak256(this.props.boardValues[attackedCell]));
+          
+
+      
+      let y = Math.floor(attackedCell / 8);
+      let x = attackedCell % 8;
+      console.log('got attacked at x: ' + x + ', y: ' + y);
+
+      let isHit = 0;
+      console.log(this.myBoard);
+      if(this.myBoard[y][x] == 1){
+        isHit = 1;
+        this.myBoard[y][x] = 2;
+      }
+      else
+        this.myBoard[y][x] = 3;
+
+     
+      if(event.returnValues.isHit === 1){
+        
+          this.enemyBoard[this.state.attackingY][this.state.attackingX] = 2;
+        } else if(event.returnValues.isHit === 0){
+          this.enemyBoard[this.state.attackingY][this.state.attackingX] = 3;
+        }
+
+        this.makeEnemyCells();
+        this.makeMyCells();
+
+      let turn = this.state.turn + 1;
+      this.setState({myTurn: true,
+                      turn, proof, leaf, isHit,
+                      lastHitProof: this.props.boardValues[attackedCell]
+      });
+    } 
 
     initialAttack(target){
         const { drizzle, drizzleState } = this.props;
@@ -110,7 +179,12 @@ class GameOnView extends Component {
     }
 
     attackEnemy(target){
-       
+      const { drizzle, drizzleState } = this.props;
+      const contract = drizzle.contracts.Battleships;
+
+     
+      console.log(this.state.isHit);
+      contract.methods.attack(this.props.game.index,target,this.state.proof,this.state.leaf,this.state.lastHitProof,this.state.isHit).send({from: drizzleState.accounts[0]});
     }
 
     makeEmptyEnemyBoard() {
@@ -130,13 +204,12 @@ class GameOnView extends Component {
             myBoard[i] = [];
           for(let y = 0 ; y < this.rows ; y ++)
             for(let x = 0 ; x < this.cols ; x++)
-                if(this.props.myBoard[y][x])
+                if(this.myBoard[y][x])
                     myBoard[y][x] = 1;
                 else myBoard[y][x] = 0;
         const { drizzle, drizzleState } = this.props;
         const contract = drizzle.contracts.Battleships;
         let myCells = [];
-        console.log(myBoard);
         for (let y = 0; y < this.rows; y++) {
           for (let x = 0; x < this.cols; x++) {
             if (myBoard[y][x] == 1) {
@@ -144,7 +217,6 @@ class GameOnView extends Component {
             }
           }
         }
-        console.log(myCells);
         this.setState({myCells});
       }
 
@@ -167,6 +239,13 @@ class GameOnView extends Component {
             }
           }
         }
+
+        console.log('fired cells:');
+        console.log(firedCells);
+        console.log('hitCells cells:');
+        console.log(hitCells);
+        console.log('missedCells cells:');
+        console.log(missedCells);
         this.setState({firedCells,hitCells,missedCells});
       }
 
@@ -192,9 +271,11 @@ class GameOnView extends Component {
           if(this.enemyBoard[y][x] === 0){
               this.enemyBoard[y][x] = 1;
                       
+              console.log('attacking enemy at x: ' + x + ', y: ' + y);
               let targetIdx = y*8 + x;
               this.makeEnemyCells();
-              this.setState({myTurn: false});
+              this.setState({myTurn: false, attackingX: x, attackingY: y});
+              console.log(this.state.turn);
               if(this.state.turn == 0)
                 this.initialAttack(targetIdx);
               else
@@ -253,16 +334,16 @@ class GameOnView extends Component {
             <Cell x={cell.x} y={cell.y}
                 key={`${cell.x},${cell.y}`}/>
         ))}
-        {/* {hitCells.map(cell => (
-            <Cell x={cell.x} y={cell.y}
+        {hitCells.map(cell => (
+            <HitCell x={cell.x} y={cell.y}
                 key={`${cell.x},${cell.y}`}/>
         ))
         }
         {missedCells.map(cell => (
-            <Cell x={cell.x} y={cell.y}
+            <MissedCell x={cell.x} y={cell.y}
                 key={`${cell.x},${cell.y}`}/>
         ))
-        } */}
+        }
         </div>
       
     </div>

@@ -10,7 +10,7 @@ contract Battleships {
     event GameAccepted(uint32 gameIdx, address indexed opponent);
     event GameConfirmed(uint32 indexed gameIdx, address indexed opponent);
     event GameStarted(uint32 indexed gameIdx, address indexed opponent);
-    event PlayerAttacked(uint32 indexed gameIdx, address indexed opponent, uint32 indexed target, uint32 prevTarget, bool isHit);
+    event PlayerAttacked(uint32 indexed gameIdx, address indexed opponent, uint32 indexed target, uint32 prevTarget, uint32 isHit);
     event GameEnded(uint32 indexed gameIdx, address indexed opponent);
     
 
@@ -73,12 +73,12 @@ contract Battleships {
         else opponent = gamesData[gameIdx].players[0];
 
         gamesData[gameIdx].lastTarget = target;
-        emit PlayerAttacked(gameIdx, opponent, target,64,false);
+        emit PlayerAttacked(gameIdx, opponent, target,64,3);
 
         
     }
 
-    function attack(uint32 gameIdx, uint32 attackTarget, bytes32[] memory proof, bytes32 leaf, string memory lastTargetProof, bool isHit) public{
+    function attack(uint32 gameIdx, uint32 attackTarget, bytes32[] memory proof, bytes32 leaf, string memory lastTargetProof, uint32 isHit) public{
         require(gameIdx < nextGameIdx);
         require(gamesData[gameIdx].players[0] != address(0x0));
         require(gamesData[gameIdx].players[1] != address(0x0));

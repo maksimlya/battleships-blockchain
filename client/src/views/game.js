@@ -7,8 +7,6 @@ import 'antd/dist/antd.css';
 import Web3 from 'web3';
 import GameOnView from './gameOn';
 
-
-
 import Media from "react-media"
 import LoadingView from "../views/loading"
 import MessageView from "../views/message"

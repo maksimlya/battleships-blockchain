@@ -15,8 +15,8 @@ import './Game.css';
 const CELL_SIZE = 70;
 const WIDTH = 560;
 const HEIGHT = 560;
-//const WS_ADDRESS = "ws://127.0.0.1:8545"
-const WS_ADDRESS = 'ws://172.40.3.118:8545';
+const WS_ADDRESS = "ws://127.0.0.1:8545"
+
 
 const CONTRACT_TIMEOUT = 1000 * 60 * 10 // 10 minutes by default
 

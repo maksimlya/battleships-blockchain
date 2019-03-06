@@ -7,9 +7,9 @@ import { Row, Col, Divider, Button, Input, InputNumber, Spin, Icon, message, not
 import ConfirmAcceptModal from "../widgets/confirm-accept-modal"
 import 'antd/dist/antd.css';
 import Web3 from 'web3';
-//const WS_ADDRESS = "ws://127.0.0.1:8545"
+const WS_ADDRESS = "ws://127.0.0.1:8545"
 
-const WS_ADDRESS = 'ws://172.40.3.118:8545';
+
 
 
 

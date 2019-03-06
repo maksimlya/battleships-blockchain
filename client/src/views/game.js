@@ -15,6 +15,8 @@ import './Game.css';
 const CELL_SIZE = 70;
 const WIDTH = 560;
 const HEIGHT = 560;
+//const WS_ADDRESS = "ws://127.0.0.1:8545"
+const WS_ADDRESS = 'ws://172.40.3.118:8545';
 
 const CONTRACT_TIMEOUT = 1000 * 60 * 10 // 10 minutes by default
 
@@ -155,7 +157,7 @@ class GameView extends Component {
 
     componentDidMount() {
         //const web3 = new Web3(window.web3.currentProvider);
-        const web3 = new Web3('ws://milky.ddns.net:8545');
+        const web3 = new Web3(WS_ADDRESS);
         const { drizzle, drizzleState } = this.props;
         const contract = drizzle.contracts.Battleships;
         this.setState({ loadingGameInfo: true })

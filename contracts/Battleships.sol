@@ -167,7 +167,7 @@ contract Battleships {
         uint32 openListIndex;
         string[64] player1Cells;
         string[64] player2Cells;
-        uint8 status;
+        uint8 status;       // 0 - Game Created / 1 - Player1 turn / 2 - Player2 turn, 5 - game confirmed / 11 - Player1 wins // 12 - Player2 wins.
         uint amount;
         uint32 gameIndex;
 

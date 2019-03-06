@@ -7,6 +7,9 @@ import { Row, Col, Divider, Button, Input, InputNumber, Spin, Icon, message, not
 import ConfirmAcceptModal from "../widgets/confirm-accept-modal"
 import 'antd/dist/antd.css';
 import Web3 from 'web3';
+//const WS_ADDRESS = "ws://127.0.0.1:8545"
+
+const WS_ADDRESS = 'ws://172.40.3.118:8545';
 
 
 
@@ -40,7 +43,7 @@ class MainView extends Component {
 
         this.fetchOpenGames();
 
-        const web3 = new Web3('ws://milky.ddns.net:8545');
+        const web3 = new Web3(WS_ADDRESS);
         const { drizzle, drizzleState } = this.props;
         const battleships = drizzle.contracts.Battleships;
 

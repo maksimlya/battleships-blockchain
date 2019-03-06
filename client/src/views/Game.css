@@ -13,10 +13,12 @@
 }
 
 .HitCell {
-  background: #a00;
+  background: rgb(165, 10, 10);
+  background-image: url(../media/cell-cross.png);
   position: absolute;
 }
 .MissedCell {
-  background: #00c;
+  background: rgb(166, 223, 196);
+  background-image: url(../media/cell-oval.png);
   position: absolute;
 }

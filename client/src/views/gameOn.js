@@ -72,6 +72,8 @@ class GameOnView extends Component {
             firedCells: [],
             hitCells: [],
             missedCells: [],
+            myHitCells: [],
+            myMissedCells: [],
             turn: 0,
             myTurn: false,
             proof: null,
@@ -152,14 +154,16 @@ class GameOnView extends Component {
       else
         this.myBoard[y][x] = 3;
 
-     
-      if(event.returnValues.isHit === 1){
+      
+      if(event.returnValues.isHit === "1"){
         
+          console.log('attacking x: ' + this.state.attackingX + ', attackingY: ' + this.state.attackingY);
           this.enemyBoard[this.state.attackingY][this.state.attackingX] = 2;
-        } else if(event.returnValues.isHit === 0){
+        } else if(event.returnValues.isHit === "0"){
           this.enemyBoard[this.state.attackingY][this.state.attackingX] = 3;
         }
-
+        console.log('enemy board: ');
+        console.log(this.enemyBoard);
         this.makeEnemyCells();
         this.makeMyCells();
 
@@ -199,25 +203,23 @@ class GameOnView extends Component {
       }
 
       makeMyCells() {
-          let myBoard = []
-          for(let i = 0 ; i < 8 ; i ++)
-            myBoard[i] = [];
-          for(let y = 0 ; y < this.rows ; y ++)
-            for(let x = 0 ; x < this.cols ; x++)
-                if(this.myBoard[y][x])
-                    myBoard[y][x] = 1;
-                else myBoard[y][x] = 0;
         const { drizzle, drizzleState } = this.props;
         const contract = drizzle.contracts.Battleships;
         let myCells = [];
+        let myHitCells = [];
+        let myMissedCells = [];
         for (let y = 0; y < this.rows; y++) {
           for (let x = 0; x < this.cols; x++) {
-            if (myBoard[y][x] == 1) {
+            if (this.myBoard[y][x] == 1) {
                 myCells.push({ x, y });
+            } else if(this.myBoard[y][x] == 2){
+                myHitCells.push({ x, y });
+            } else if(this.myBoard[y][x] == 3){
+                myMissedCells.push({ x, y });
             }
           }
         }
-        this.setState({myCells});
+        this.setState({myCells,myHitCells,myMissedCells});
       }
 
       makeEnemyCells() {
@@ -235,7 +237,7 @@ class GameOnView extends Component {
                 hitCells.push({x,y});
             }
             else if(this.enemyBoard[y][x] == 3){
-                missedCells.push(x,y);
+                missedCells.push({x,y});
             }
           }
         }
@@ -295,6 +297,8 @@ class GameOnView extends Component {
     const { firedCells } = this.state;
     const { hitCells } = this.state;
     const { missedCells } = this.state;
+    const { myHitCells } = this.state;
+    const { myMissedCells } = this.state;
 
     return <Row gutter={48}>
     <Col md={12}>
@@ -311,8 +315,18 @@ class GameOnView extends Component {
        >
         {myCells.map(cell => (
             <Cell x={cell.x} y={cell.y}
-                key={`${cell.x},${cell.y}`}/>
+                key={`my${cell.x},my${cell.y}`}/>
         ))}
+        {myHitCells.map(cell => (
+            <HitCell x={cell.x} y={cell.y}
+                key={`myHit${cell.x},myHit${cell.y}`}/>
+        ))
+        }
+        {myMissedCells.map(cell => (
+            <MissedCell x={cell.x} y={cell.y}
+                key={`myMissed${cell.x},myMissed${cell.y}`}/>
+        ))
+        }
         </div>
         <Button type="primary" size = "large" onClick = { this.onClaimVictory }>Claim Victory</Button>
     </div>
@@ -332,16 +346,16 @@ class GameOnView extends Component {
         ref={(n) => { this.boardRef = n; }}>
         {firedCells.map(cell => (
             <Cell x={cell.x} y={cell.y}
-                key={`${cell.x},${cell.y}`}/>
+                key={`fired${cell.x},fired${cell.y}`}/>
         ))}
         {hitCells.map(cell => (
             <HitCell x={cell.x} y={cell.y}
-                key={`${cell.x},${cell.y}`}/>
+                key={`hit${cell.x},hit${cell.y}`}/>
         ))
         }
         {missedCells.map(cell => (
             <MissedCell x={cell.x} y={cell.y}
-                key={`${cell.x},${cell.y}`}/>
+                key={`missed${cell.x},missed${cell.y}`}/>
         ))
         }
         </div>
